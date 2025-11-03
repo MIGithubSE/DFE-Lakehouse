@@ -1,0 +1,88 @@
+﻿{
+  "name": "dfe-education-medallion-pipeline",
+  "tags": {
+    "department": "education",
+    "team": "data-engineering",
+    "project": "education-lakehouse",
+    "environment": "production"
+  },
+  "email_notifications": {
+    "on_start": ["data-engineering@education.gov.uk"],
+    "on_success": ["data-engineering@education.gov.uk"],
+    "on_failure": ["data-alerts@education.gov.uk"]
+  },
+  "tasks": [
+    {
+      "task_key": "setup_environment",
+      "description": "Initialize Unity Catalog and environment",
+      "notebook_task": {
+        "notebook_path": "/Repos/mohammed/education-lakehouse-pipeline/notebooks/0_utils_and_setup"
+      },
+      "existing_cluster_id": "gf01cc4b3g12trw9",
+      "timeout_seconds": 1200
+    },
+    {
+      "task_key": "bronze_ingestion",
+      "description": "Ingest raw data into Bronze layer",
+      "notebook_task": {
+        "notebook_path": "/Repos/mohammed/education-lakehouse-pipeline/notebooks/1_bronze_ingest"
+      },
+      "existing_cluster_id": "gf01cc4b3g12trw9",
+      "depends_on": [
+        {
+          "task_key": "setup_environment"
+        }
+      ],
+      "timeout_seconds": 1800
+    },
+    {
+      "task_key": "silver_transformation",
+      "description": "Transform data into Silver layer",
+      "notebook_task": {
+        "notebook_path": "/Repos/mohammed/education-lakehouse-pipeline/notebooks/2_silver_transform"
+      },
+      "existing_cluster_id": "gf01cc4b3g12trw9",
+      "depends_on": [
+        {
+          "task_key": "bronze_ingestion"
+        }
+      ],
+      "timeout_seconds": 2400
+    },
+    {
+      "task_key": "gold_aggregation",
+      "description": "Create Gold layer aggregates",
+      "notebook_task": {
+        "notebook_path": "/Repos/mohammed/education-lakehouse-pipeline/notebooks/3_gold_aggregate"
+      },
+      "existing_cluster_id": "gf01cc4b3g12trw9",
+      "depends_on": [
+        {
+          "task_key": "silver_transformation"
+        }
+      ],
+      "timeout_seconds": 1800
+    },
+    {
+      "task_key": "data_quality_checks",
+      "description": "Execute data quality validations",
+      "notebook_task": {
+        "notebook_path": "/Repos/mohammed/education-lakehouse-pipeline/notebooks/4_data_quality_checks"
+      },
+      "existing_cluster_id": "gf01cc4b3g12trw9",
+      "depends_on": [
+        {
+          "task_key": "gold_aggregation"
+        }
+      ],
+      "timeout_seconds": 1200
+    }
+  ],
+  "format": "MULTI_TASK",
+  "schedule": {
+    "quartz_cron_expression": "0 0 6 * * ?",
+    "timezone_id": "Europe/London",
+    "pause_status": "UNPAUSED"
+  },
+  "max_concurrent_runs": 1
+}

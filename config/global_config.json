@@ -1,0 +1,43 @@
+{
+  "catalog": {
+    "name": "dfe_education",
+    "managed_location": "s3://your-company-data/dfe-education/uc-managed/",
+    "comment": "DFE Education Data Lakehouse - Unity Catalog"
+  },
+  "schemas": {
+    "bronze": {
+      "name": "bronze",
+      "comment": "Raw source data from DfE systems"
+    },
+    "silver": {
+      "name": "silver",
+      "comment": "Cleansed, validated education data"
+    },
+    "gold": {
+      "name": "gold",
+      "comment": "Business-level aggregates for policy dashboards"
+    }
+  },
+  "medallion_paths": {
+    "bronze": "/mnt/dfe-education/bronze/",
+    "silver": "/mnt/dfe-education/silver/",
+    "gold": "/mnt/dfe-education/gold/"
+  },
+  "data_sources": {
+    "enrolments": {
+      "source_path": "/mnt/raw-data/enrolments/",
+      "format": "json",
+      "schema": "enrolments_schema"
+    },
+    "providers": {
+      "source_path": "/mnt/raw-data/providers/",
+      "format": "json",
+      "schema": "providers_schema"
+    }
+  },
+  "pipeline": {
+    "schedule": "0 0 6 * * ?",
+    "timezone": "Europe/London",
+    "alert_emails": ["your-email@education.gov.uk"]
+  }
+}

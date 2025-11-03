@@ -1,0 +1,240 @@
+﻿{
+ "cells": [
+  {
+   "cell_type": "code",
+   "execution_count": 0,
+   "metadata": {
+    "application/vnd.databricks.v1+cell": {
+     "cellMetadata": {
+      "byteLimit": 2048000,
+      "rowLimit": 10000
+     },
+     "inputWidgets": {},
+     "nuid": "3cec171a-72cb-4f9d-a8b3-b09edc47b2b3",
+     "showTitle": false,
+     "tableResultSettingsMap": {},
+     "title": ""
+    }
+   },
+   "outputs": [],
+   "source": [
+    "# DFE Education Lakehouse - Setup & Utilities"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "application/vnd.databricks.v1+cell": {
+     "cellMetadata": {
+      "byteLimit": 2048000,
+      "rowLimit": 10000
+     },
+     "inputWidgets": {},
+     "nuid": "6ceceba2-e542-459c-a53a-eb40fabf65c4",
+     "showTitle": false,
+     "tableResultSettingsMap": {},
+     "title": ""
+    }
+   },
+   "source": [
+    "# DfE Education Lakehouse - Setup & Configuration\n",
+    "\n",
+    "Initializes Unity Catalog, schemas, and utility functions for the medallion pipeline."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 0,
+   "metadata": {
+    "application/vnd.databricks.v1+cell": {
+     "cellMetadata": {
+      "byteLimit": 2048000,
+      "rowLimit": 10000
+     },
+     "inputWidgets": {},
+     "nuid": "99c20e5c-54b2-4f91-96d7-d8d655becc0a",
+     "showTitle": true,
+     "tableResultSettingsMap": {},
+     "title": "Load Configuration"
+    }
+   },
+   "outputs": [
+    {
+     "output_type": "stream",
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "⚠️  Could not load config file: [Errno 2] No such file or directory: '/Users/ec09495@yahoo.com/education-lakehouse-pipeline/config/global_config.json'\nUsing default configuration...\n"
+     ]
+    }
+   ],
+   "source": [
+    "# Load global configuration\n",
+    "config_path = \"/Users/ec09495@yahoo.com/education-lakehouse-pipeline/config/global_config.json\"\n",
+    "\n",
+    "try:\n",
+    "    with open(config_path, 'r') as f:\n",
+    "        import json\n",
+    "        global_config = json.load(f)\n",
+    "    print(\"✅ Configuration loaded successfully!\")\n",
+    "except Exception as e:\n",
+    "    print(f\"⚠️  Could not load config file: {e}\")\n",
+    "    print(\"Using default configuration...\")\n",
+    "    global_config = {\n",
+    "        \"catalog\": {\"name\": \"dfe_education\"},\n",
+    "        \"schemas\": {\n",
+    "            \"bronze\": {\"name\": \"bronze\"},\n",
+    "            \"silver\": {\"name\": \"silver\"}, \n",
+    "            \"gold\": {\"name\": \"gold\"}\n",
+    "        }\n",
+    "    }"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 0,
+   "metadata": {
+    "application/vnd.databricks.v1+cell": {
+     "cellMetadata": {
+      "byteLimit": 2048000,
+      "rowLimit": 10000
+     },
+     "inputWidgets": {},
+     "nuid": "2ffa88f6-a5b2-4e62-b5f3-2b93bd3206a3",
+     "showTitle": true,
+     "tableResultSettingsMap": {},
+     "title": "Initialize Unity Catalog Environment"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "from pyspark.sql import functions as F\n",
+    "from pyspark.sql.types import *\n",
+    "from delta.tables import *\n",
+    "\n",
+    "def initialize_uc_environment():\n",
+    "    \"\"\"Initialize Unity Catalog environment for DfE education data\"\"\"\n",
+    "    \n",
+    "    # Create catalog if it doesn't exist\n",
+    "    spark.sql(f\"\"\"\n",
+    "        CREATE CATALOG IF NOT EXISTS {global_config['catalog']['name']}\n",
+    "        COMMENT 'DFE Education Data Lakehouse - Unity Catalog'\n",
+    "    \"\"\")\n",
+    "    \n",
+    "    # Use the catalog\n",
+    "    spark.sql(f\"USE CATALOG {global_config['catalog']['name']}\")\n",
+    "    \n",
+    "    # Create schemas for medallion architecture\n",
+    "    for schema_name, schema_config in global_config['schemas'].items():\n",
+    "        spark.sql(f\"\"\"\n",
+    "            CREATE SCHEMA IF NOT EXISTS {schema_name}\n",
+    "            COMMENT 'DfE education data - {schema_name} layer'\n",
+    "        \"\"\")\n",
+    "    \n",
+    "    print(\"✅ Unity Catalog environment initialized successfully!\")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 0,
+   "metadata": {
+    "application/vnd.databricks.v1+cell": {
+     "cellMetadata": {
+      "byteLimit": 2048000,
+      "rowLimit": 10000
+     },
+     "inputWidgets": {},
+     "nuid": "f743838e-e2b3-44c3-a428-591af77aa5c5",
+     "showTitle": true,
+     "tableResultSettingsMap": {},
+     "title": "Data Quality & Validation Functions"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "class DFEQualityFramework:\n",
+    "    \"\"\"Data quality framework for DfE education data\"\"\"\n",
+    "    \n",
+    "    @staticmethod\n",
+    "    def validate_enrolment_data(df):\n",
+    "        \"\"\"Validate enrolment data against DfE business rules\"\"\"\n",
+    "        \n",
+    "        validation_results = {\n",
+    "            'total_records': df.count(),\n",
+    "            'null_enrolment_ids': df.filter(F.col('enrolment_id').isNull()).count(),\n",
+    "            'null_provider_ids': df.filter(F.col('provider_id').isNull()).count(),\n",
+    "            'duplicate_enrolments': df.count() - df.dropDuplicates(['enrolment_id']).count()\n",
+    "        }\n",
+    "        \n",
+    "        validation_results['quality_score'] = (\n",
+    "            (validation_results['total_records'] - validation_results['null_enrolment_ids'] - \n",
+    "             validation_results['duplicate_enrolments']) / validation_results['total_records']\n",
+    "        ) * 100\n",
+    "        \n",
+    "        return validation_results"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 0,
+   "metadata": {
+    "application/vnd.databricks.v1+cell": {
+     "cellMetadata": {
+      "byteLimit": 2048000,
+      "rowLimit": 10000
+     },
+     "inputWidgets": {},
+     "nuid": "f9ebd4b3-20c9-43d3-8202-97894020b491",
+     "showTitle": true,
+     "tableResultSettingsMap": {},
+     "title": "Initialize the Environment"
+    }
+   },
+   "outputs": [
+    {
+     "output_type": "stream",
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "✅ Unity Catalog environment initialized successfully!\n🎓 DfE Education Lakehouse initialized and ready for pipeline execution!\nNext: Run 1_bronze_ingest notebook to start data processing.\n"
+     ]
+    }
+   ],
+   "source": [
+    "# Initialize UC and schemas\n",
+    "initialize_uc_environment()\n",
+    "\n",
+    "# Set current schema to bronze\n",
+    "spark.sql(f\"USE SCHEMA {global_config['schemas']['bronze']['name']}\")\n",
+    "\n",
+    "print(\"🎓 DfE Education Lakehouse initialized and ready for pipeline execution!\")\n",
+    "print(\"Next: Run 1_bronze_ingest notebook to start data processing.\")"
+   ]
+  }
+ ],
+ "metadata": {
+  "application/vnd.databricks.v1+notebook": {
+   "computePreferences": {
+    "hardware": {
+     "accelerator": null,
+     "gpuPoolId": null,
+     "memory": null
+    }
+   },
+   "dashboards": [],
+   "environmentMetadata": null,
+   "inputWidgetPreferences": null,
+   "language": "python",
+   "notebookMetadata": {
+    "pythonIndentUnit": 4
+   },
+   "notebookName": "0_utils_and_setup",
+   "widgets": {}
+  },
+  "language_info": {
+   "name": "python"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 0
+}
